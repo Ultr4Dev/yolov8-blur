@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 from pathlib import Path
+import time
 
 
 def list_devices():
@@ -41,10 +42,15 @@ predict_pose = False
 pixelate_state = True
 
 # Initialize virtual camera
-with pyvirtualcam.Camera(width=1920, height=1080, fps=30, device="OBS Virtual Camera", fmt=pyvirtualcam.PixelFormat.BGR) as cam:
+with pyvirtualcam.Camera(width=1920, height=1080, fps=20, device="OBS Virtual Camera", fmt=pyvirtualcam.PixelFormat.BGR) as cam:
+    start_time = time.time()
+    frame_count = 0
+
     # Predict on video stream
-    results = yolo_model.predict(source=0, stream=True, conf=0.30)
+    results = yolo_model.predict(
+        source=0, stream=True, conf=0.30, classes=[0, 62, 63, 67])
     for r in results:
+        frame_count += 1
         img = np.copy(r.orig_img)
         # Initialize a combined mask for all persons
         combined_mask = {}
@@ -74,7 +80,7 @@ with pyvirtualcam.Camera(width=1920, height=1080, fps=30, device="OBS Virtual Ca
             w, h = isolated.shape[1], isolated.shape[0]
             # Resize -> Pixelate -> Resize back
             isolated_small = cv2.resize(
-                isolated, (w//25, h//25), interpolation=cv2.INTER_NEAREST)
+                img, (w//25, h//25), interpolation=cv2.INTER_NEAREST)
             isolated_large = cv2.resize(
                 isolated_small, (w, h), interpolation=cv2.INTER_NEAREST)
 
@@ -88,8 +94,16 @@ with pyvirtualcam.Camera(width=1920, height=1080, fps=30, device="OBS Virtual Ca
                     img[combined_mask[label] > 0] = 0
             except:
                 continue
-        # Resize the image to 720p
-        preview = cv2.resize(img, (1920, 1080))
+
+        # Calculate FPS
+        elapsed_time = time.time() - start_time
+        fps = frame_count / elapsed_time
+
+        # Add FPS counter to top left corner
+        cv2.putText(img, f"FPS: {fps:.2f}", (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+
+        preview = cv2.resize(img, (1280, 720))
         cv2.imshow("preview", preview)
 
         cam.send(img)
