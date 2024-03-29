@@ -22,7 +22,7 @@ yolo_model = YOLO("models/yolov8x-seg.pt")
 yolo_model.cuda()
 predict_pose = False
 pixelate_state = True
-
+label_state = False
 # Initialize virtual camera
 with pyvirtualcam.Camera(width=1920, height=1080, fps=30, fmt=pyvirtualcam.PixelFormat.BGR) as cam:
     start_time = time.time()
@@ -30,7 +30,7 @@ with pyvirtualcam.Camera(width=1920, height=1080, fps=30, fmt=pyvirtualcam.Pixel
 
     # Predict on video stream
     results = yolo_model.predict(
-        source=3, stream=True, conf=0.25, classes=[0, 62])
+        source=3, stream=True, conf=0.25, classes=[0, 62, 63])
     for r in results:
         frame_count += 1
         img = np.copy(r.orig_img)
@@ -71,12 +71,12 @@ with pyvirtualcam.Camera(width=1920, height=1080, fps=30, fmt=pyvirtualcam.Pixel
             if pixelate_state and np.sum(combined_mask["person"]["combined"]) > 0:
                 # Combine all person masks from the combined_mask["person"]
                 person_mask = combined_mask["person"]["combined"]
-                isolated = cv2.bitwise_and(img, img, mask=person_mask)
-                w, h = isolated.shape[1], isolated.shape[0]
+                # isolated = cv2.bitwise_and(img, img, mask=person_mask)
+                w, h = img.shape[1], img.shape[0]
                 # Resize -> Pixelate -> Resize back
                 isolated_small = cv2.resize(
-                    img, (w//10, h//10), interpolation=cv2.INTER_NEAREST)
-                isolated_small = cv2.blur(isolated_small, (20, 20))
+                    img, (w//50, h//50), interpolation=cv2.INTER_NEAREST)
+                # isolated_small = cv2.blur(isolated_small, (20, 20))
                 isolated_large = cv2.resize(
                     isolated_small, (w, h), interpolation=cv2.INTER_NEAREST)
                 img[person_mask >
@@ -91,17 +91,18 @@ with pyvirtualcam.Camera(width=1920, height=1080, fps=30, fmt=pyvirtualcam.Pixel
                 if np.sum(combined_mask[label]["combined"]) > 0:
                     img[combined_mask[label]["combined"] > 0] = 0
                     # Calculate the center of the mask and add label text
-                for ci, mask in combined_mask[label]["individual"].items():
-                    if np.sum(mask) > 0:
-                        img[mask > 0] = 0
-                        M = cv2.moments(mask)
-                        if M["m00"] != 0:
-                            # Calculate the center of the mask
-                            cX = int(M["m10"] / M["m00"])
-                            cY = int(M["m01"] / M["m00"])
-                            # Add label text
-                            cv2.putText(img, label, (cX, cY),
-                                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+                if label_state:
+                    for ci, mask in combined_mask[label]["individual"].items():
+                        if np.sum(mask) > 0:
+                            img[mask > 0] = 0
+                            M = cv2.moments(mask)
+                            if M["m00"] != 0:
+                                # Calculate the center of the mask
+                                cX = int(M["m10"] / M["m00"])
+                                cY = int(M["m01"] / M["m00"])
+                                # Add label text
+                                cv2.putText(img, label, (cX, cY),
+                                            cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
             except:
                 continue
 
@@ -113,8 +114,8 @@ with pyvirtualcam.Camera(width=1920, height=1080, fps=30, fmt=pyvirtualcam.Pixel
         cv2.putText(img, f"FPS: {fps:.2f}", (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-        preview = cv2.resize(img, (1280, 720))
-        cv2.imshow("preview", preview)
+        # preview = cv2.resize(img, (1280, 720))
+        # cv2.imshow("preview", preview)
 
         cam.send(img)
         cam.sleep_until_next_frame()
