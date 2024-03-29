@@ -39,7 +39,7 @@ def main():
 
         # Predict on video stream
         results = yolo_model.predict(
-            source=3, stream=True, conf=0.25, classes=[0, 62, 63])
+            source=3, stream=True, conf=0.25, classes=[0, 62, 63], verbose=False)
         for r in results:
             frame_count += 1
             img = np.copy(r.orig_img)
