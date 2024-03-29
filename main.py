@@ -114,8 +114,8 @@ with pyvirtualcam.Camera(width=1920, height=1080, fps=30, fmt=pyvirtualcam.Pixel
         cv2.putText(img, f"FPS: {fps:.2f}", (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-        # preview = cv2.resize(img, (1280, 720))
-        # cv2.imshow("preview", preview)
+        preview = cv2.resize(img, (256, 144))
+        cv2.imshow("preview", preview)
 
         cam.send(img)
         cam.sleep_until_next_frame()
