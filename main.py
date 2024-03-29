@@ -5,29 +5,69 @@ from ultralytics import YOLO
 from pathlib import Path
 import time
 
+# Function to convert class names to class IDs
+
+height, width = (0, 0)
+labels = ["person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
+          "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
+          "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
+          "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard",
+          "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
+          "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch",
+          "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard",
+          "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase",
+          "scissors", "teddy bear", "hair drier", "toothbrush"]
+class_name_to_id = {name: idx for idx, name in enumerate(labels)}
+
+
+def class_name_list_to_class_id_list(class_names: list[str]):
+
+    return [class_name_to_id[class_name] for class_name in class_names]
+
+# Function to apply pixelation with optimized 'person' mask check
+
+
+def apply_pixelation(img, combined_mask, width, height):
+
+    if "person" in combined_mask and np.any(combined_mask["person"]["combined"] > 0):
+        person_mask = combined_mask["person"]["combined"]
+
+        # Vectorized resizing for efficiency
+        isolated_small = cv2.resize(
+            img, (width // 50, height // 50), interpolation=cv2.INTER_NEAREST)
+        isolated_large = cv2.resize(
+            isolated_small, (width, height), interpolation=cv2.INTER_NEAREST)
+
+        # Pixel modification using direct mask indexing
+        img[person_mask > 0] = isolated_large[person_mask > 0]
+
+    return img
+
+# Function to draw black polygons with combined iterations
+
+
+def draw_black_polygons(img, combined_mask, blackout_labels):
+    if not blackout_labels:
+        return img
+    # Draw black polygons for all blackout labels at once
+    for label in blackout_labels:
+        try:
+            if np.sum(combined_mask[label]["combined"]) > 0:
+                img[combined_mask[label]["combined"] > 0] = 0
+
+        except KeyError:  # Handle cases where a label may not be detected
+            continue
+
+    return img
+
+# Main function
+
 
 def main():
-    """
-    Main function to process video stream by applying pixelation and labeling using YOLO model.
-    """
     # Initialize variables
-    inpaint_state = False
-    predict_pose = False
     pixelate_state = True
+    blackout_labels = ["tv", "laptop", "cell phone"]
     label_state = False
-
-    # List of object labels recognized by YOLO model
-    labels = ["bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
-              "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
-              "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
-              "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard",
-              "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
-              "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch",
-              "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard",
-              "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase",
-              "scissors", "teddy bear", "hair drier", "toothbrush"
-              ]
-
     # Initialize YOLO model
     yolo_model = YOLO("models/yolov8x-seg.pt")
     yolo_model.cuda()
@@ -36,11 +76,15 @@ def main():
     with pyvirtualcam.Camera(width=1920, height=1080, fps=30, fmt=pyvirtualcam.PixelFormat.BGR) as cam:
         start_time = time.time()
         frame_count = 0
+        global height, width
 
         # Predict on video stream
-        results = yolo_model.predict(
-            source=3, stream=True, conf=0.25, classes=[0, 62, 63], verbose=False)
+        results = yolo_model.predict(retina_masks=False, iou=0.9, source=5, stream=True,
+                                     conf=0.25, verbose=False,
+                                     classes=class_name_list_to_class_id_list(["person", "tv", "laptop"]))
         for r in results:
+            if width == 0 and height == 0:
+                height, width = r.orig_img.shape[:2]
             frame_count += 1
             img = np.copy(r.orig_img)
 
@@ -57,51 +101,19 @@ def main():
                     combined_mask[label]["individual"][ci] = np.zeros_like(
                         img[:, :, 0])
 
-                if label == "person":
-                    contour = c.masks.xy.pop().astype(np.int32).reshape(-1, 1, 2)
-                    cv2.drawContours(combined_mask[label]["combined"], [
-                                     contour], -1, (255, 255, 255), cv2.FILLED)
-                    cv2.drawContours(combined_mask[label]["individual"][ci], [
-                                     contour], -1, (255, 255, 255), cv2.FILLED)
+                contour = c.masks.xy.pop().astype(np.int32).reshape(-1, 1, 2)
+                cv2.drawContours(combined_mask[label]["combined"], [
+                    contour], -1, (255, 255, 255), cv2.FILLED)
+                cv2.drawContours(combined_mask[label]["individual"][ci], [
+                    contour], -1, (255, 255, 255), cv2.FILLED)
 
-                if label in labels:
-                    contour = c.masks.xy.pop().astype(np.int32).reshape(-1, 1, 2)
-                    cv2.drawContours(combined_mask[label]["combined"], [
-                                     contour], -1, (255, 255, 255), cv2.FILLED)
-                    cv2.drawContours(combined_mask[label]["individual"][ci], [
-                                     contour], -1, (255, 255, 255), cv2.FILLED)
+            # Apply pixelation if enabled
+            if pixelate_state:
+                img = apply_pixelation(img, combined_mask, width, height)
 
-            # Pixelate all people in the image
-            try:
-                if pixelate_state and np.sum(combined_mask["person"]["combined"]) > 0:
-                    person_mask = combined_mask["person"]["combined"]
-                    w, h = img.shape[1], img.shape[0]
-                    isolated_small = cv2.resize(
-                        img, (w//50, h//50), interpolation=cv2.INTER_NEAREST)
-                    isolated_large = cv2.resize(
-                        isolated_small, (w, h), interpolation=cv2.INTER_NEAREST)
-                    img[person_mask > 0] = isolated_large[person_mask > 0]
-
-            except:
-                pass
-
-            # Draw black polygon for all objects like tv's, laptops, and cell phones in the combined mask
-            for label in labels:
-                try:
-                    if np.sum(combined_mask[label]["combined"]) > 0:
-                        img[combined_mask[label]["combined"] > 0] = 0
-                    if label_state:
-                        for ci, mask in combined_mask[label]["individual"].items():
-                            if np.sum(mask) > 0:
-                                img[mask > 0] = 0
-                                M = cv2.moments(mask)
-                                if M["m00"] != 0:
-                                    cX = int(M["m10"] / M["m00"])
-                                    cY = int(M["m01"] / M["m00"])
-                                    cv2.putText(
-                                        img, label, (cX, cY), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-                except:
-                    continue
+            # Draw black polygons for specified labels
+            img = draw_black_polygons(
+                img, combined_mask, blackout_labels)
 
             # Calculate FPS
             elapsed_time = time.time() - start_time
@@ -111,13 +123,11 @@ def main():
             cv2.putText(img, f"FPS: {fps:.2f}", (10, 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-            preview = cv2.resize(img, (256, 144))
-            cv2.imshow("preview", preview)
+            # cv2.imshow("Virtual Camera", img)
 
             cam.send(img)
             cam.sleep_until_next_frame()
             cv2.waitKey(1)
-
     cam.close()
 
 
