@@ -22,5 +22,5 @@ Your application should now be using the virtual camera with the YOLOv8 blur aug
 pip install -r requirements.txt
 ```
 
-> #  Make sure to install the correct version of PyTorch and torchvision for your CUDA version. You can find the > correct version [here](https://pytorch.org/get-started/locally/).
+> #  Make sure to install the correct version of PyTorch and torchvision for your CUDA version. You can find the correct version [here](https://pytorch.org/get-started/locally/).
 
