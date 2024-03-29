@@ -10,6 +10,9 @@ This is a simple implementation of YOLOv8 with blur augmentation for privacy pro
 ## Planned Features
 - [ ] Fine-tuning the model for better performance.
 - [ ] Face identification for selective blurring.
+- [ ] Inpainting to fill the black screen with the background.
+- [ ] GUI for easy configuration.
+- [ ] 3D Avatar overlay for people in the frame. (Depends on Face identification feature.)
 
 ## Requirements
 - Python 3.10
