@@ -8,8 +8,8 @@ This is a simple implementation of YOLOv8 with blur augmentation for privacy pro
 - [x] Blur augmentation for privacy protection.
 - [x] Virtual camera output for use in applications like Zoom, Skype, and Discord.
 ## Planned Features
-- [] Fine-tuning the model for better performance.
-- [] Face identification for selective blurring.
+- [ ] Fine-tuning the model for better performance.
+- [ ] Face identification for selective blurring.
 
 ## Requirements
 - Python 3.10
