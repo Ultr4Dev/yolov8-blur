@@ -1,7 +1,7 @@
-# Ignore everything in all subdirectories
-/*
-
-
+/
+/.*
+/*.dist
+/*.build
 # But not these files...
 !.gitignore
 !/*.py
@@ -10,3 +10,7 @@
 !/readme.md
 !/CITATION.bib
 !/requirements.txt
+!/pyproject.toml
+# Ignore /models/ files that start with yolo and end with .pt
+!/models/
+/models/yolo*.pt

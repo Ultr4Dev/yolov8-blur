@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=42", "wheel", "nuitka", "toml"]
+build-backend = "nuitka.distutils.Build"
+
+[tool.nuitka]
+options = [
+    "--standalone",
+    "--module-parameter=torch-disable-jit=yes",
+    "--enable-plugin=no-qt"
+]
+main-module = "main.py"
+
+[tool.nuitka.scripts]
+build = "python -m nuitka --standalone main.py --module-parameter=torch-disable-jit=yes --enable-plugin=no-qt"
