@@ -123,7 +123,9 @@ def main():
             cv2.putText(img, f"FPS: {fps:.2f}", (10, 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-            # cv2.imshow("Virtual Camera", img)
+            # half resolution of the original image
+            cv2.imshow("Virtual Camera", cv2.resize(
+                img, (int(img.shape[1] / 2), int(img.shape[0] / 2))))
 
             cam.send(img)
             cam.sleep_until_next_frame()
