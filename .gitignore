@@ -1,5 +1,6 @@
-# Ignore everything
+# Ignore everything in all subdirectories
 /*
+
 
 # But not these files...
 !.gitignore
@@ -7,3 +8,5 @@
 !/*.yaml
 !/*.yml
 !/readme.md
+!/CITATION.bib
+!/requirements.txt
