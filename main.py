@@ -10,6 +10,8 @@ CONFIGURABLE PARAMETERS:
 """
 # Configurable parameters
 pixelate_state = True  # Whether to apply pixelation to people
+pixelate_level = 50  # Pixelation level (higher values for more pixelation)
+global blackout_labels
 blackout_labels = ["tv", "laptop", "cell phone"]  # Labels to blackout
 yolo_model_path = "models/yolov9c-seg.pt"  # YOLO model path with segmentation will download if not found
 source_index = 5  # Index of the video source (0 for default camera)
@@ -20,7 +22,22 @@ END OF CONFIGURABLE PARAMETERS
 """
 # Function to convert class names to class IDs
 
-height, width = (0, 0)
+
+"""
+GUI FOR CONFIGURABLE PARAMETERS:
+"""
+# Initialize GUI window
+cv2.namedWindow("Virtual Camera", cv2.WINDOW_NORMAL)
+cv2.resizeWindow("Virtual Camera", 640, 480)
+
+# Create trackbars for configurable parameters
+cv2.createTrackbar("Pixelate", "Virtual Camera", 1, 1, lambda x: None)
+# Write trackbar initial values
+cv2.setTrackbarPos("Pixelate", "Virtual Camera", int(pixelate_state))
+# Pixelation level trackbar
+cv2.createTrackbar("Pixelate level", "Virtual Camera", 1, 100, lambda x: None)
+cv2.setTrackbarPos("Pixelate level", "Virtual Camera", pixelate_level)
+
 labels = ["person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
           "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
           "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
@@ -30,6 +47,11 @@ labels = ["person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", 
           "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard",
           "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase",
           "scissors", "teddy bear", "hair drier", "toothbrush"]
+
+    
+
+
+height, width = (0, 0)
 class_name_to_id = {name: idx for idx, name in enumerate(labels)}
 
 
@@ -53,10 +75,12 @@ def apply_pixelation(img, combined_mask, width, height):
 
     if "person" in combined_mask and np.any(combined_mask["person"]["combined"] > 0):
         person_mask = combined_mask["person"]["combined"]
-
+        pixelate_level = cv2.getTrackbarPos("Pixelate level", "Virtual Camera")
+        if pixelate_level == 0:
+            pixelate_level = 1
         # Vectorized resizing for efficiency
         isolated_small = cv2.resize(
-            img, (width // 50, height // 50), interpolation=cv2.INTER_NEAREST)
+            img, (width // pixelate_level, height // pixelate_level), interpolation=cv2.INTER_NEAREST)
         isolated_large = cv2.resize(
             isolated_small, (width, height), interpolation=cv2.INTER_NEAREST)
 
@@ -122,11 +146,10 @@ def main():
     # Initialize virtual camera
     with pyvirtualcam.Camera(width=1920, height=1080, fps=30, fmt=pyvirtualcam.PixelFormat.BGR) as cam:
         global height, width
-
         # Predict on video stream
         results = yolo_model.predict(retina_masks=False, iou=0.5, source=source_index, stream=True,
                                      conf=0.50, verbose=False, half=True, imgsz=img_size, batch=10, vid_stride=5,
-                                     classes=class_name_list_to_class_id_list(["person", "tv", "laptop"]))
+                                     classes=class_name_list_to_class_id_list(["person"] + blackout_labels))
         for r in results:
             if width == 0 and height == 0:
                 height, width = r.orig_img.shape[:2]
@@ -146,8 +169,10 @@ def main():
                     contour], -1, (255, 255, 255), cv2.FILLED)
 
             # Apply pixelation if enabled
-            if pixelate_state:
+            if cv2.getTrackbarPos("Pixelate", "Virtual Camera") == 1:
                 img = apply_pixelation(img, combined_mask, width, height)
+            else:
+                pass
 
             # Draw black polygons for specified labels
             img = draw_black_polygons(
