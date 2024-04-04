@@ -5,27 +5,15 @@ import numpy as np
 import torch
 from ultralytics import YOLO
 
-"""
-CONFIGURABLE PARAMETERS:
-"""
 # Configurable parameters
 pixelate_state = True  # Whether to apply pixelation to people
 pixelate_level = 50  # Pixelation level (higher values for more pixelation)
-global blackout_labels
 blackout_labels = ["tv", "laptop", "cell phone"]  # Labels to blackout
-yolo_model_path = "models/yolov9c-seg.pt"  # YOLO model path with segmentation will download if not found
+yolo_model_path = "models/yolov9c-seg.pt"  # YOLO model path with segmentation
 source_index = 5  # Index of the video source (0 for default camera)
-img_size = 480  # Input image size for YOLO model
-    
-"""
-END OF CONFIGURABLE PARAMETERS
-"""
-# Function to convert class names to class IDs
+img_size = 640  # Input image size for YOLO model
+model_confidence = 0.20  # Confidence threshold for YOLO model
 
-
-"""
-GUI FOR CONFIGURABLE PARAMETERS:
-"""
 # Initialize GUI window
 cv2.namedWindow("Virtual Camera", cv2.WINDOW_NORMAL)
 cv2.resizeWindow("Virtual Camera", 640, 480)
@@ -38,6 +26,8 @@ cv2.setTrackbarPos("Pixelate", "Virtual Camera", int(pixelate_state))
 cv2.createTrackbar("Pixelate level", "Virtual Camera", 1, 100, lambda x: None)
 cv2.setTrackbarPos("Pixelate level", "Virtual Camera", pixelate_level)
 
+
+# Function to convert class names to class IDs
 labels = ["person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
           "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
           "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
@@ -114,6 +104,7 @@ def draw_black_polygons(img, combined_mask, blackout_labels):
 
     return img
 
+
 # Image embedding function
 
 def embed_image(img):
@@ -123,9 +114,9 @@ def embed_image(img):
 # Main function
 
 
+# Main function
 def main():
     fps = 0
-    # Initialize YOLO model
     try:
         yolo_model = YOLO(yolo_model_path)
     except FileNotFoundError:
@@ -135,7 +126,6 @@ def main():
         print(f"Error loading YOLO model: {e}")
         return
 
-    # Error handling for CUDA availability
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
     yolo_model.to(device)
@@ -143,19 +133,17 @@ def main():
     
     frame_counter = 0
     start_time = time.time()
-    # Initialize virtual camera
+    
     with pyvirtualcam.Camera(width=1920, height=1080, fps=30, fmt=pyvirtualcam.PixelFormat.BGR) as cam:
         global height, width
-        # Predict on video stream
         results = yolo_model.predict(retina_masks=False, iou=0.5, source=source_index, stream=True,
-                                     conf=0.50, verbose=False, half=True, imgsz=img_size, batch=10, vid_stride=5,
+                                     conf=model_confidence, verbose=False, half=True, imgsz=img_size, batch=10, vid_stride=5,
                                      classes=class_name_list_to_class_id_list(["person"] + blackout_labels))
         for r in results:
             if width == 0 and height == 0:
                 height, width = r.orig_img.shape[:2]
             img = r.orig_img.copy()
 
-            # Initialize a combined mask for all persons
             combined_mask = {}
             for ci, c in enumerate(r):
                 label = c.names[int(c.boxes[0].cls.cpu().tolist()[0])]
@@ -168,33 +156,25 @@ def main():
                 cv2.drawContours(combined_mask[label]["combined"], [
                     contour], -1, (255, 255, 255), cv2.FILLED)
 
-            # Apply pixelation if enabled
             if cv2.getTrackbarPos("Pixelate", "Virtual Camera") == 1:
                 img = apply_pixelation(img, combined_mask, width, height)
-            else:
-                pass
 
-            # Draw black polygons for specified labels
-            img = draw_black_polygons(
-                img, combined_mask, blackout_labels)
+            img = draw_black_polygons(img, combined_mask, blackout_labels)
 
-            if frame_counter % 2 == 0:
-            # half resolution of the original image
-                cv2.imshow("Virtual Camera", cv2.resize(
-                    img, (int(width / 3), int(height / 3))))
-
-            cam.send(img)
-            cam.sleep_until_next_frame()
+            if frame_counter % 1 == 0:
+                cam.send(img)
             frame_counter += 1
+            if frame_counter % 10 == 0:
+                cv2.imshow("Virtual Camera", cv2.resize(
+                    img, (int(width / 4), int(height / 4))))
 
-            # Calculate FPS every second (or every N frames, e.g., 30)
-            if frame_counter % 60 == 0:
+            if frame_counter % 120 == 0:
                 end_time = time.time()
                 fps = frame_counter / (end_time - start_time)
                 print(f"FPS: {fps:.2f}")
-                # Reset the frame counter and start time
                 frame_counter = 0
                 start_time = time.time()
+            #cam.sleep_until_next_frame()
             if cv2.waitKey(1) == ord('q'):
                 break
     cv2.destroyAllWindows()
