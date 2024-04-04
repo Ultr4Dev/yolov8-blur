@@ -2,6 +2,8 @@
 /.*
 /*.dist
 /*.build
+/*.egg-info
+/*.ps1
 # But not these files...
 !.gitignore
 !/*.py
