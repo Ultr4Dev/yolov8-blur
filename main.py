@@ -164,11 +164,11 @@ def main():
             if frame_counter % 1 == 0:
                 cam.send(img)
             frame_counter += 1
-            if frame_counter % 10 == 0:
+            if frame_counter % 5 == 0:
                 cv2.imshow("Virtual Camera", cv2.resize(
                     img, (int(width / 4), int(height / 4))))
 
-            if frame_counter % 120 == 0:
+            if frame_counter % 60 == 0:
                 end_time = time.time()
                 fps = frame_counter / (end_time - start_time)
                 print(f"FPS: {fps:.2f}")
