@@ -2,6 +2,11 @@
 requires = ["setuptools>=42", "wheel", "nuitka", "toml"]
 build-backend = "nuitka.distutils.Build"
 
+[project]
+name = "YOLOV8-BLUR"
+version = "1.0.0"
+readme = "readme.md"
+
 [tool.nuitka]
 options = [
     "--standalone",

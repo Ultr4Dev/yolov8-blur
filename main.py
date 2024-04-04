@@ -9,7 +9,7 @@ from ultralytics import YOLO
 CONFIGURABLE PARAMETERS:
 """
 # Configurable parameters
-pixelate_state = True  # Whether to apply pixelation
+pixelate_state = True  # Whether to apply pixelation to people
 blackout_labels = ["tv", "laptop", "cell phone"]  # Labels to blackout
 yolo_model_path = "models/yolov9c-seg.pt"  # YOLO model path with segmentation will download if not found
 source_index = 5  # Index of the video source (0 for default camera)
