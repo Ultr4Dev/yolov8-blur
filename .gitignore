@@ -2,6 +2,8 @@
 /.*
 /*.dist
 /*.build
+/*.egg-info
+/*.ps1
 # But not these files...
 !.gitignore
 !/*.py
@@ -14,3 +16,6 @@
 # Ignore /models/ files that start with yolo and end with .pt
 !/models/
 /models/yolo*.pt
+nuitka.log
+nuitka-err.log
+log.txt
