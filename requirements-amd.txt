@@ -1,4 +1,4 @@
---extra-index-url https://download.pytorch.org/whl/cu121
+--extra-index-url https://download.pytorch.org/whl/rocm5.7
 certifi==2024.2.2
 charset-normalizer==3.3.2
 colorama==0.4.6
