@@ -4,11 +4,12 @@ import cv2
 import numpy as np
 import torch
 from ultralytics import YOLO
+import yaml
 
 # Configurable parameters
 pixelate_state = True  # Whether to apply pixelation to people
 pixelate_level = 50  # Pixelation level (higher values for more pixelation)
-blackout_labels = ["tv", "laptop", "cell phone"]  # Labels to blackout
+blackout_labels = ["tv", "laptop", "cell phone"]  # Labels to blackout (must be in coco-classes.yaml)
 yolo_model_path = "models/yolov9c-seg.pt"  # YOLO model path with segmentation
 source_index = 5  # Index of the video source (0 for default camera)
 img_size = 640  # Input image size for YOLO model
@@ -28,26 +29,25 @@ cv2.setTrackbarPos("Pixelate level", "Virtual Camera", pixelate_level)
 
 
 # Function to convert class names to class IDs
-labels = ["person", "bicycle", "car", "motorcycle", "airplane", "bus", "train", "truck", "boat", "traffic light",
-          "fire hydrant", "stop sign", "parking meter", "bench", "bird", "cat", "dog", "horse", "sheep", "cow",
-          "elephant", "bear", "zebra", "giraffe", "backpack", "umbrella", "handbag", "tie", "suitcase", "frisbee",
-          "skis", "snowboard", "sports ball", "kite", "baseball bat", "baseball glove", "skateboard", "surfboard",
-          "tennis racket", "bottle", "wine glass", "cup", "fork", "knife", "spoon", "bowl", "banana", "apple",
-          "sandwich", "orange", "broccoli", "carrot", "hot dog", "pizza", "donut", "cake", "chair", "couch",
-          "potted plant", "bed", "dining table", "toilet", "tv", "laptop", "mouse", "remote", "keyboard",
-          "cell phone", "microwave", "oven", "toaster", "sink", "refrigerator", "book", "clock", "vase",
-          "scissors", "teddy bear", "hair drier", "toothbrush"]
+# load from coco-classes.yaml
+with open("coco-classes.yaml", "r") as file:
+    """
+    format of coco-classes.yaml:
+    names:
+        id(int): name(str)
+        
+    """
+    labels = yaml.load(file, Loader=yaml.FullLoader)["names"]
+    print(labels)
 
+def get_camera_pixel_size(camera:int):
+    # Get camera pixel size
+    camera = cv2.VideoCapture(camera)
+    width = int(camera.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    camera.release()
     
-
-
-height, width = (0, 0)
-class_name_to_id = {name: idx for idx, name in enumerate(labels)}
-
-
-def class_name_list_to_class_id_list(class_names: list[str]):
-
-    return [class_name_to_id[class_name] for class_name in class_names]
+    return width, height
 
 def apply_pixelation(img, combined_mask, width, height):
     """
@@ -73,11 +73,45 @@ def apply_pixelation(img, combined_mask, width, height):
             img, (width // pixelate_level, height // pixelate_level), interpolation=cv2.INTER_NEAREST)
         isolated_large = cv2.resize(
             isolated_small, (width, height), interpolation=cv2.INTER_NEAREST)
-
+        
+        # Cut out the person from the original image
+        img[person_mask > 0] = 0
+        
         # Pixel modification using direct mask indexing
         img[person_mask > 0] = isolated_large[person_mask > 0]
 
     return img
+
+def experimental_apply_pixelation(img, combined_mask):
+    if "person" in combined_mask and img is not None and img.shape[0] > 0 and img.shape[1] > 0:
+        person_mask = combined_mask["person"]["combined"]
+        if np.any(person_mask > 0):
+            pixelate_level = max(1, cv2.getTrackbarPos("Pixelate level", "Virtual Camera"))
+
+            # Prepare a blank canvas to pixelate on
+            pixelated_img = img.copy()
+
+            # Apply pixelation only within the mask
+            rows, cols = img.shape[:2]
+            for i in range(0, rows, pixelate_level):
+                for j in range(0, cols, pixelate_level):
+                    # Check if the current block intersects with the person mask
+                    block_mask = person_mask[i:i + pixelate_level, j:j + pixelate_level]
+                    if np.any(block_mask):
+                        # Calculate average color within the block where mask is positive
+                        block = img[i:i + pixelate_level, j:j + pixelate_level]
+                        avg_color = np.mean(block[block_mask > 0], axis=0)
+                        # Apply the average color only to the pixels within the mask in this block
+                        pixelated_img[i:i + pixelate_level, j:j + pixelate_level][block_mask > 0] = avg_color
+
+            # Apply the pixelated image only where the mask is positive
+            img[person_mask > 0] = pixelated_img[person_mask > 0]
+            
+            return img
+        else:
+            return img
+    else:
+        return img
 
 def draw_black_polygons(img, combined_mask, blackout_labels):
     """
@@ -116,6 +150,7 @@ def embed_image(img):
 
 # Main function
 def main():
+    width, height = get_camera_pixel_size(source_index)
     fps = 0
     try:
         yolo_model = YOLO(yolo_model_path)
@@ -125,23 +160,23 @@ def main():
     except Exception as e:
         print(f"Error loading YOLO model: {e}")
         return
-
+    # Convert 
+    temp_labels = blackout_labels + ["person"]
+    classes = [key for key, value in labels.items() if value in temp_labels]
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
     yolo_model.to(device)
+    yolo_model.compile()
     print(f"Using {'CUDA' if use_cuda else 'CPU'} for inference.")
     
     frame_counter = 0
     start_time = time.time()
     
-    with pyvirtualcam.Camera(width=1920, height=1080, fps=30, fmt=pyvirtualcam.PixelFormat.BGR) as cam:
-        global height, width
-        results = yolo_model.predict(retina_masks=False, iou=0.5, source=source_index, stream=True,
-                                     conf=model_confidence, verbose=False, half=True, imgsz=img_size, batch=10, vid_stride=5,
-                                     classes=class_name_list_to_class_id_list(["person"] + blackout_labels))
+    with pyvirtualcam.Camera(width=width, height=height, fps=30, fmt=pyvirtualcam.PixelFormat.BGR, device="cam1") as cam:
+        results = yolo_model.predict(retina_masks=False, source=source_index, stream=True,
+                                     conf=model_confidence, verbose=False, half=True, imgsz=img_size, batch=5, vid_stride=4,
+                                     classes=classes)
         for r in results:
-            if width == 0 and height == 0:
-                height, width = r.orig_img.shape[:2]
             img = r.orig_img.copy()
 
             combined_mask = {}
@@ -157,18 +192,23 @@ def main():
                     contour], -1, (255, 255, 255), cv2.FILLED)
 
             if cv2.getTrackbarPos("Pixelate", "Virtual Camera") == 1:
-                img = apply_pixelation(img, combined_mask, width, height)
-
+                #img = apply_pixelation(img, combined_mask, width, height)
+                try:
+                    img = experimental_apply_pixelation(img, combined_mask)
+                except Exception as e:
+                    print(f"Error applying pixelation: {e}")
+                    continue
             img = draw_black_polygons(img, combined_mask, blackout_labels)
 
             if frame_counter % 1 == 0:
                 cam.send(img)
+                cam.sleep_until_next_frame()
             frame_counter += 1
             if frame_counter % 5 == 0:
                 cv2.imshow("Virtual Camera", cv2.resize(
                     img, (int(width / 4), int(height / 4))))
 
-            if frame_counter % 60 == 0:
+            if frame_counter % 30 == 0:
                 end_time = time.time()
                 fps = frame_counter / (end_time - start_time)
                 print(f"FPS: {fps:.2f}")
