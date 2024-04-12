@@ -5,6 +5,7 @@
 /*.egg-info
 /*.ps1
 # But not these files...
+!.envrc
 !.gitignore
 !/*.py
 !/*.yaml
@@ -13,9 +14,11 @@
 !/CITATION.bib
 !/requirements.txt
 !/pyproject.toml
+
 # Ignore /models/ files that start with yolo and end with .pt
 !/models/
 /models/yolo*.pt
+env/
 nuitka.log
 nuitka-err.log
 log.txt
