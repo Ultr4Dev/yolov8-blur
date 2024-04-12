@@ -16,6 +16,7 @@
 # Ignore /models/ files that start with yolo and end with .pt
 !/models/
 /models/yolo*.pt
+# Exclude the following files as they are not needed for the project, they are logs
 nuitka.log
 nuitka-err.log
 log.txt
