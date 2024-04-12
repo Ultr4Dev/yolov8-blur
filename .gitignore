@@ -16,3 +16,6 @@
 # Ignore /models/ files that start with yolo and end with .pt
 !/models/
 /models/yolo*.pt
+nuitka.log
+nuitka-err.log
+log.txt
