@@ -1,4 +1,4 @@
-name: Nuitka Action
+name: Compile to exe
 on:
   push:
     branches:
