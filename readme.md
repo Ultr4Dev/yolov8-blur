@@ -1,5 +1,5 @@
 # YOLOv8 Blur
-[![Nuitka Action](https://github.com/Ultr4Dev/yolov8-blur/actions/workflows/action.yml/badge.svg?branch=main&event=release)](https://github.com/Ultr4Dev/yolov8-blur/actions/workflows/action.yml)
+[![Nuitka Action](https://github.com/Ultr4Dev/yolov8-blur/actions/workflows/action.yml/badge.svg?branch=main&event=release)](https://github.com/Ultr4Dev/yolov8-blur/actions/workflows/action.yml) # TODO
 ## Introduction
 This is a simple implementation of YOLOv8 with blur augmentation for privacy protection.
 
