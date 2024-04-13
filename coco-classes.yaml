@@ -1,4 +1,4 @@
-# Classes
+# Classes in COCO dataset
 names:
   0: person
   1: bicycle
