@@ -8,16 +8,15 @@ import yaml
 
 # Configurable parameters
 pixelate_state = True  # Whether to apply pixelation to people
-#pixelate_level = 50  # Pixelation level (higher values for more pixelation)
 blackout_labels = ["tv", "laptop", "cell phone"]  # Labels to blackout (must be in coco-classes.yaml)
 yolo_model_path = "models/yolov9c-seg.pt"  # YOLO model path with segmentation
-source_index = 5  # Index of the video source (0 for default camera)
-img_size: int = int(640/2)  # Input image size for YOLO model
+source_index = 0  # Index of the video source (0 for default camera)
+img_size: int = int(640)  # Input image size for YOLO model
 model_confidence = 0.20  # Confidence threshold for YOLO model
 
 # Initialize GUI window
 cv2.namedWindow("Virtual Camera", cv2.WINDOW_NORMAL)
-cv2.resizeWindow("Virtual Camera", 640, 480)
+cv2.resizeWindow("Virtual Camera", 320, 240)
 
 # Create trackbars for configurable parameters
 cv2.createTrackbar("Pixelate", "Virtual Camera", 1, 1, lambda x: None)
@@ -63,9 +62,8 @@ def apply_pixelation(img, combined_mask, width, height):
 
     if "person" in combined_mask and np.any(combined_mask["person"]["combined"] > 0):
         person_mask = combined_mask["person"]["combined"]
-        pixelate_level = cv2.getTrackbarPos("Pixelate level", "Virtual Camera")
-        if pixelate_level == 0:
-            pixelate_level = 1
+        pixelate_level = 85
+
         # Vectorized resizing for efficiency
         isolated_small = cv2.resize(
             img, (width // pixelate_level, height // pixelate_level), interpolation=cv2.INTER_NEAREST)
@@ -79,37 +77,6 @@ def apply_pixelation(img, combined_mask, width, height):
         img[person_mask > 0] = isolated_large[person_mask > 0]
 
     return img
-
-def experimental_apply_pixelation(img, combined_mask):
-    if "person" in combined_mask and img is not None and img.shape[0] > 0 and img.shape[1] > 0:
-        person_mask = combined_mask["person"]["combined"]
-        if np.any(person_mask > 0):
-            pixelate_level = 85
-
-            # Prepare a blank canvas to pixelate on
-            pixelated_img = img.copy()
-
-            # Apply pixelation only within the mask
-            rows, cols = img.shape[:2]
-            for i in range(0, rows, pixelate_level):
-                for j in range(0, cols, pixelate_level):
-                    # Check if the current block intersects with the person mask
-                    block_mask = person_mask[i:i + pixelate_level, j:j + pixelate_level]
-                    if np.any(block_mask):
-                        # Calculate average color within the block where mask is positive
-                        block = img[i:i + pixelate_level, j:j + pixelate_level]
-                        avg_color = np.mean(block[block_mask > 0], axis=0)
-                        # Apply the average color only to the pixels within the mask in this block
-                        pixelated_img[i:i + pixelate_level, j:j + pixelate_level][block_mask > 0] = avg_color
-
-            # Apply the pixelated image only where the mask is positive
-            img[person_mask > 0] = pixelated_img[person_mask > 0]
-            
-            return img
-        else:
-            return img
-    else:
-        return img
 
 def draw_black_polygons(img, combined_mask, blackout_labels):
     """
@@ -138,13 +105,9 @@ def draw_black_polygons(img, combined_mask, blackout_labels):
 
 
 # Image embedding function
-
 def embed_image(img):
     # TODO Implement image embedding for similiarity search
     return img
-
-# Main function
-
 
 # Main function
 def main():
@@ -168,11 +131,10 @@ def main():
     print(f"Using {'CUDA' if use_cuda else 'CPU'} for inference.")
     
     frame_counter = 0
-    start_time = time.time()
     
-    with pyvirtualcam.Camera(width=width, height=height, fps=30, fmt=pyvirtualcam.PixelFormat.BGR, device="cam1") as cam:
+    with pyvirtualcam.Camera(width=width, height=height, fps=20, fmt=pyvirtualcam.PixelFormat.BGR, device="cam1") as cam:
         results = yolo_model.predict(retina_masks=False, source=source_index, stream=True,
-                                     conf=model_confidence, verbose=False, half=True, imgsz=img_size, batch=5, vid_stride=4,
+                                     conf=model_confidence, verbose=False, half=True, imgsz=img_size, batch=5, vid_stride=1,
                                      classes=classes)
         for r in results:
             img = r.orig_img.copy()
@@ -190,28 +152,25 @@ def main():
                     contour], -1, (255, 255, 255), cv2.FILLED)
 
             if cv2.getTrackbarPos("Pixelate", "Virtual Camera") == 1:
-                #img = apply_pixelation(img, combined_mask, width, height)
                 try:
-                    img = experimental_apply_pixelation(img, combined_mask)
+                    img = apply_pixelation(img, combined_mask, width, height)
+                
                 except Exception as e:
                     print(f"Error applying pixelation: {e}")
                     continue
             img = draw_black_polygons(img, combined_mask, blackout_labels)
 
-            if frame_counter % 1 == 0:
-                cam.send(img)
-                cam.sleep_until_next_frame()
+            cam.send(img)
+            cam.sleep_until_next_frame()
+                
+                
             frame_counter += 1
-            if frame_counter % 5 == 0:
+            if frame_counter % 60 == 0:
+                print(cam.current_fps)
                 cv2.imshow("Virtual Camera", cv2.resize(
                     img, (int(width / 4), int(height / 4))))
-
-            if frame_counter % 30 == 0:
-                end_time = time.time()
-                fps = frame_counter / (end_time - start_time)
-                print(f"FPS: {fps:.2f}")
                 frame_counter = 0
-                start_time = time.time()
+
             #cam.sleep_until_next_frame()
             if cv2.waitKey(1) == ord('q'):
                 break
