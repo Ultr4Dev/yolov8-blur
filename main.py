@@ -8,11 +8,11 @@ import yaml
 
 # Configurable parameters
 pixelate_state = True  # Whether to apply pixelation to people
-pixelate_level = 50  # Pixelation level (higher values for more pixelation)
+#pixelate_level = 50  # Pixelation level (higher values for more pixelation)
 blackout_labels = ["tv", "laptop", "cell phone"]  # Labels to blackout (must be in coco-classes.yaml)
 yolo_model_path = "models/yolov9c-seg.pt"  # YOLO model path with segmentation
 source_index = 5  # Index of the video source (0 for default camera)
-img_size = 640  # Input image size for YOLO model
+img_size: int = int(640/2)  # Input image size for YOLO model
 model_confidence = 0.20  # Confidence threshold for YOLO model
 
 # Initialize GUI window
@@ -23,9 +23,7 @@ cv2.resizeWindow("Virtual Camera", 640, 480)
 cv2.createTrackbar("Pixelate", "Virtual Camera", 1, 1, lambda x: None)
 # Write trackbar initial values
 cv2.setTrackbarPos("Pixelate", "Virtual Camera", int(pixelate_state))
-# Pixelation level trackbar
-cv2.createTrackbar("Pixelate level", "Virtual Camera", 1, 100, lambda x: None)
-cv2.setTrackbarPos("Pixelate level", "Virtual Camera", pixelate_level)
+
 
 
 # Function to convert class names to class IDs
@@ -86,7 +84,7 @@ def experimental_apply_pixelation(img, combined_mask):
     if "person" in combined_mask and img is not None and img.shape[0] > 0 and img.shape[1] > 0:
         person_mask = combined_mask["person"]["combined"]
         if np.any(person_mask > 0):
-            pixelate_level = max(1, cv2.getTrackbarPos("Pixelate level", "Virtual Camera"))
+            pixelate_level = 85
 
             # Prepare a blank canvas to pixelate on
             pixelated_img = img.copy()
