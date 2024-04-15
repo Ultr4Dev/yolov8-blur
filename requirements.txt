@@ -34,7 +34,7 @@ seaborn==0.13.2
 six==1.16.0
 sympy==1.12
 thop==0.1.1.post2209072238
-torch==2.2.2+cu121
+torch==2.2.2+rocm5.7
 torchaudio==2.2.2+cu121
 torchvision==0.17.2+cu121
 tqdm==4.66.2
