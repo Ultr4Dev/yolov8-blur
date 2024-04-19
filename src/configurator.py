@@ -49,7 +49,7 @@ def configuratorGUI() -> VideoProcessingConfig:
     blackout_label_listbox.grid(row=1, column=1, sticky='w', rowspan=4)
 
     # Helper functions
-    def save_config():
+    def save_config() -> VideoProcessingConfig:
         selected_labels = [blackout_label_listbox.get(i) for i in blackout_label_listbox.curselection()]
         global config
         config = VideoProcessingConfig(
