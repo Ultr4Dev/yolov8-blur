@@ -7,14 +7,8 @@ import torch
 from ultralytics import YOLO
 import yaml
 
-from configurator import VideoProcessingConfig, configuratorGUI
-from processing import draw_black_polygons, experimental_apply_pixelation
-
-from list_cameras import getCams
-
-getCams()
-
-getCams = None
+from src.configurator import VideoProcessingConfig, configuratorGUI
+from src.processing import draw_black_polygons, experimental_apply_pixelation
 
 # Initialize GUI window
 cv2.namedWindow("Virtual Camera", cv2.WINDOW_NORMAL)
@@ -121,6 +115,7 @@ def main(config:VideoProcessingConfig) -> None:
                 frame_counter = 0
                 start_time = time.time()
             #cam.sleep_until_next_frame()
+            # Switch statement for key presses 
             if cv2.waitKey(1) == ord('q'):
                 break
             if cv2.waitKey(1) == ord('c'):
