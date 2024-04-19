@@ -10,6 +10,7 @@ from src.configurator import VideoProcessingConfig, configuratorGUI
 from src.processing import draw_black_polygons, experimental_apply_pixelation
 
 class VideoProcessor:
+<<<<<<< HEAD
     def __init__(self, config:VideoProcessingConfig) -> None:
         self.config:VideoProcessingConfig = config
         self.labels: dict = self.load_labels("./src/misc/coco-classes.json")
@@ -18,18 +19,36 @@ class VideoProcessor:
         self.setup_virtual_cam()
 
     def load_labels(self, filepath) -> dict:
+=======
+    def __init__(self, config):
+        self.config = config
+        self.labels = self.load_labels("./src/misc/coco-classes.json")
+        self.width, self.height = self.get_camera_pixel_size(self.config.source_index)
+        self.yolo_model = self.load_yolo_model()
+        self.setup_virtual_cam()
+
+    def load_labels(self, filepath):
+>>>>>>> 32a323bef03b55026b7238756632548bba10c2e6
         with open(filepath) as f:
             labels = json.load(f)
         return {int(key): value for key, value in labels.items()}
 
+<<<<<<< HEAD
     def get_camera_pixel_size(self, camera_index) -> tuple:
+=======
+    def get_camera_pixel_size(self, camera_index):
+>>>>>>> 32a323bef03b55026b7238756632548bba10c2e6
         camera = cv2.VideoCapture(camera_index)
         width = int(camera.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(camera.get(cv2.CAP_PROP_FRAME_HEIGHT))
         camera.release()
         return width, height
 
+<<<<<<< HEAD
     def load_yolo_model(self) -> YOLO:
+=======
+    def load_yolo_model(self):
+>>>>>>> 32a323bef03b55026b7238756632548bba10c2e6
         try:
             yolo_model = YOLO(self.config.yolo_model_path)
             yolo_model.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
@@ -39,11 +58,19 @@ class VideoProcessor:
             print(f"Error loading YOLO model: {e}")
             return None
 
+<<<<<<< HEAD
     def setup_virtual_cam(self) -> None:
         cv2.namedWindow("Virtual Camera", cv2.WINDOW_NORMAL)
         cv2.resizeWindow("Virtual Camera", 640, 480)
 
     def run(self) -> None:
+=======
+    def setup_virtual_cam(self):
+        cv2.namedWindow("Virtual Camera", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("Virtual Camera", 640, 480)
+
+    def run(self):
+>>>>>>> 32a323bef03b55026b7238756632548bba10c2e6
         with pyvirtualcam.Camera(width=1920, height=1080, fps=30, fmt=pyvirtualcam.PixelFormat.BGR, device="cam1") as cam:
             with open("./src/misc/coco-classes.json") as f:
                 labels = json.load(f)
