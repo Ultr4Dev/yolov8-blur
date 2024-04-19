@@ -1,5 +1,5 @@
 from src.configurator import configuratorGUI
-from src.main import main
+from src.videoprocessor import VideoProcessor
 
 if __name__ == "__main__":
-    main(configuratorGUI())
+    VideoProcessor(configuratorGUI()).run()
