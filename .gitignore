@@ -21,3 +21,4 @@ nuitka.log
 nuitka-err.log
 log.txt
 !/.github/
+*.pyc
