@@ -28,7 +28,7 @@ python-dateutil==2.9.0.post0
 pytz==2024.1
 pyvirtualcam==0.11.1
 PyYAML==6.0.1
-requests==2.31.0
+requests==2.32.2
 scipy==1.13.0
 seaborn==0.13.2
 six==1.16.0
@@ -37,8 +37,8 @@ thop==0.1.1.post2209072238
 torch==2.2.2+cu121
 torchaudio==2.2.2+cu121
 torchvision==0.17.2+cu121
-tqdm==4.66.2
+tqdm==4.66.3
 typing_extensions==4.10.0
 tzdata==2024.1
 ultralytics @ git+https://github.com/ultralytics/ultralytics.git@03d0ffd9f58da3ad3e33908c19445c733a701015
-urllib3==2.2.1
+urllib3==2.2.2
